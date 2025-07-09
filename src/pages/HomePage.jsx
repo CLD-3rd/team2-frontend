@@ -14,27 +14,6 @@ import {
 } from "@/components/ui/dialog"
 import ReservationModal from "@/components/ReservationModal"
 
-// 쿠키를 가져오는 유틸리티 함수
-const getCookie = (name) => {
-  try {
-    const cookies = document.cookie.split(';').map(cookie => cookie.trim());
-    console.log('All cookies:', cookies); // 디버깅용
-
-    for (const cookie of cookies) {
-      const [cookieName, cookieValue] = cookie.split('=');
-      if (cookieName === name) {
-        console.log(`Found ${name} cookie:`, cookieValue); // 디버깅용
-        return cookieValue;
-      }
-    }
-    console.log(`${name} cookie not found`); // 디버깅용
-    return null;
-  } catch (error) {
-    console.error('Error reading cookie:', error);
-    return null;
-  }
-}
-
 const mockMusicals = [
   {
     id: 1,
