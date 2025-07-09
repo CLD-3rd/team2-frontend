@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { formatDate } from "@/lib/utils"
+import { useState, useEffect } from "react"
 import { Clock, X } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import {
@@ -12,14 +13,16 @@ import {
   DialogTitle,
 } from "@/components/ui/Dialog"
 import { Alert, AlertDescription } from "@/components/ui/Alert"
+import { musicalAPI } from "@/lib/api"
+import { getUserId } from "@/lib/auth"
 
 // Generate seat grid data (A-J rows, 1-14 columns)
-const generateSeatGrid = () => {
+const generateSeatGrid = (reservedSeats = []) => {
   const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
   const seats = []
 
-  // Mock some reserved seats
-  const reservedSeats = new Set(["A5", "A6", "B8", "C3", "C12", "F7", "F8", "G10", "H5", "I9"])
+  // Convert reserved seats array to Set for efficient lookup
+  const reservedSeatsSet = new Set(reservedSeats.map(seat => seat.seatId))
 
   rows.forEach((row) => {
     for (let col = 1; col <= 14; col++) {
@@ -28,7 +31,7 @@ const generateSeatGrid = () => {
         id: seatId,
         row,
         column: col,
-        isReserved: reservedSeats.has(seatId),
+        isReserved: reservedSeatsSet.has(seatId),
         isSelected: false,
       })
     }
@@ -38,11 +41,46 @@ const generateSeatGrid = () => {
 }
 
 export default function ReservationModal({ open, onOpenChange, musical, onReservationSuccess }) {
-  const [seats, setSeats] = useState(generateSeatGrid())
+  const [seats, setSeats] = useState([])
   const [selectedSeats, setSelectedSeats] = useState([])
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [showErrorAlert, setShowErrorAlert] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingSeats, setIsLoadingSeats] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
+
+  // 좌석 정보 로드
+  useEffect(() => {
+    if (open && musical) {
+      loadSeats()
+    }
+  }, [open, musical])
+  
+  
+  // 🛑 현재는 서버에서 좌석 정보를 하드코딩하여 응답 중 (SeatController.getReservedSeats)
+  // ✅ 추후 연동 필요: DB 또는 예약 내역 기반으로 실제 예약된 좌석을 불러오도록 수정 필요
+  const loadSeats = async () => {
+    if (!musical || !musical.date) {
+      console.warn("musical.date가 없거나 잘못되었습니다.", musical)
+      return
+    }
+  
+    setIsLoadingSeats(true)
+    setErrorMessage("")
+  
+    try {
+      const seatsData = await musicalAPI.getSeats(musical.id, musical.date)
+      console.log("✅ getSeats 응답:", seatsData)
+      const seatGrid = generateSeatGrid(seatsData?.reservedSeats || [])
+      setSeats(seatGrid)
+    } catch (error) {
+      console.error('❌ Failed to load seats:', error)
+      setErrorMessage("좌석 정보를 불러오는데 실패했습니다.")
+      setSeats(generateSeatGrid())
+    } finally {
+      setIsLoadingSeats(false)
+    }
+  }
 
   if (!musical) return null
 
@@ -69,6 +107,8 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
   }
 
   const getSeatClassName = (seat) => {
+    if (!seat) return "bg-gray-200 text-gray-400 cursor-not-allowed"
+  
     if (seat.isReserved) {
       return "bg-gray-300 cursor-not-allowed text-gray-500"
     } else if (seat.isSelected) {
@@ -77,6 +117,7 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
       return "bg-teal-500 text-white cursor-pointer hover:bg-teal-600"
     }
   }
+  
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("ko-KR").format(price) + "원"
@@ -88,46 +129,49 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
     setShowConfirmModal(true)
   }
 
+  // ✅ 백엔드 연동 필요: musicalAPI.createReservation 호출하여 예약 정보 POST
+  // 👉 백엔드는 ReservationController.createReservation에서 DB 저장 처리 필요
   const confirmReservation = async () => {
     setIsLoading(true)
-
-    // Simulate API call with potential error
+  
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Simulate 500 error (10% chance)
-      if (Math.random() < 0.1) {
-        throw new Error("Seat already reserved")
+      const reservationData = {
+        musicalId: musical.id,
+        date: musical.date,
+        seats: selectedSeats,
+        totalPrice: totalPrice,
+        userId: getUserId(),
       }
-
-      // Success
-      console.log("Reservation successful!")
-      setShowConfirmModal(false)
+  
+      const result = await musicalAPI.createReservation(reservationData)
+  
+      // ✅ 백엔드에서 오류 없었을 때만 상태 업데이트
+      console.log("Reservation successful!", result)
       onReservationSuccess(selectedSeats[0])
-
-      // Reset state
-      setSeats(generateSeatGrid())
+  
+      setShowConfirmModal(false)
+      await loadSeats()
       setSelectedSeats([])
     } catch (error) {
-      // Handle error
+      console.error("Reservation failed:", error)
       setShowConfirmModal(false)
       setShowErrorAlert(true)
-
-      // Reset seat selection and refresh
-      setSeats(generateSeatGrid())
-      setSelectedSeats([])
-
-      // Hide error after 5 seconds
-      setTimeout(() => setShowErrorAlert(false), 5000)
+      setErrorMessage(error.message || "예약에 실패했습니다. 다시 시도해주세요.")
+      setTimeout(() => {
+        setShowErrorAlert(false)
+        setErrorMessage("")
+      }, 5000)
     } finally {
       setIsLoading(false)
     }
   }
+  
 
   const handleClose = () => {
-    setSeats(generateSeatGrid())
+    setSeats([])
     setSelectedSeats([])
     setShowErrorAlert(false)
+    setErrorMessage("")
     onOpenChange(false)
   }
 
@@ -147,7 +191,16 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
           {/* Error Alert */}
           {showErrorAlert && (
             <Alert className="border-red-200 bg-red-50 mb-4">
-              <AlertDescription className="text-red-800">Seat already reserved. Please try again.</AlertDescription>
+              <AlertDescription className="text-red-800">
+                {errorMessage || "Seat already reserved. Please try again."}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Loading Alert */}
+          {isLoadingSeats && (
+            <Alert className="border-blue-200 bg-blue-50 mb-4">
+              <AlertDescription className="text-blue-800">좌석 정보를 불러오는 중...</AlertDescription>
             </Alert>
           )}
 
@@ -164,37 +217,43 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
 
                 {/* Seat Grid */}
                 <div className="overflow-x-auto">
-                  <div className="inline-block min-w-full">
-                    {rows.map((row) => (
-                      <div key={row} className="flex items-center justify-center mb-2">
-                        {/* Row Label */}
-                        <div className="w-8 text-center font-medium text-gray-600 mr-4">{row}</div>
+                  {isLoadingSeats ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-gray-500">좌석 정보를 불러오는 중...</div>
+                    </div>
+                  ) : (
+                    <div className="inline-block min-w-full">
+                      {rows.map((row) => (
+                        <div key={row} className="flex items-center justify-center mb-2">
+                          {/* Row Label */}
+                          <div className="w-8 text-center font-medium text-gray-600 mr-4">{row}</div>
 
-                        {/* Seats in Row */}
-                        <div className="flex gap-1">
-                          {Array.from({ length: 14 }, (_, i) => {
-                            const seatId = `${row}${i + 1}`
-                            const seat = seats.find((s) => s.id === seatId)
+                          {/* Seats in Row */}
+                          <div className="flex gap-1">
+                            {Array.from({ length: 14 }, (_, i) => {
+                              const seatId = `${row}${i + 1}`
+                              const seat = seats.find((s) => s.id === seatId)
 
-                            return (
-                              <button
-                                key={seatId}
-                                onClick={() => handleSeatClick(seatId)}
-                                className={`
-                                  w-8 h-8 text-xs font-medium rounded transition-colors
-                                  flex items-center justify-center
-                                  ${getSeatClassName(seat)}
-                                `}
-                                disabled={seat.isReserved}
-                              >
-                                {seat.isReserved ? <X className="h-4 w-4" /> : i + 1}
-                              </button>
-                            )
-                          })}
+                              return (
+                                <button
+                                  key={seatId}
+                                  onClick={() => handleSeatClick(seatId)}
+                                  className={`
+                                    w-8 h-8 text-xs font-medium rounded transition-colors
+                                    flex items-center justify-center
+                                    ${getSeatClassName(seat)}
+                                  `}
+                                  disabled={seat?.isReserved || isLoadingSeats}
+                                >
+                                  {seat?.isReserved ? <X className="h-4 w-4" /> : i + 1}
+                                </button>
+                              )
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Legend */}
@@ -230,7 +289,7 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
                     />
                     <div className="flex-1">
                       <h3 className="font-bold text-lg mb-1">{musical.title}</h3>
-                      <p className="text-gray-300 text-sm mb-1">2025.07.09(Wed)</p>
+                      <p className="text-gray-300 text-sm mb-1">{formatDate(musical.date)}</p>
                       <div className="flex items-center text-gray-300 text-sm">
                         <Clock className="h-4 w-4 mr-1" />
                         {musical.timeRange}
@@ -297,7 +356,7 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
                 <strong>Musical:</strong> {musical.title}
               </p>
               <p>
-                <strong>Date & Time:</strong> 2025.07.09(Wed) {musical.timeRange}
+                <strong>Date & Time:</strong> {formatDate(musical.date)} {musical.timeRange}
               </p>
               <p>
                 <strong>Seats:</strong> {selectedSeats.join(", ")}

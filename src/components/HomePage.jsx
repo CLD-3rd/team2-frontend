@@ -1,5 +1,6 @@
 "use client"
 
+import { isAuthenticated, logout } from "@/lib/auth"
 import { useState, useEffect } from "react"
 import { Grape, Clock, Users } from "lucide-react"
 import { Button } from "@/components/ui/Button"
@@ -12,80 +13,43 @@ import {
   DialogTitle,
 } from "@/components/ui/Dialog"
 import ReservationModal from "./ReservationModal"
+import { musicalAPI } from "@/lib/api"
 
-const mockMusicals = [
-  {
-    id: 1,
-    title: "The Phantom of the Opera",
-    timeRange: "14:00 ~ 16:30",
-    description: "A haunting tale of love, obsession, and music set in the mysterious depths of the Paris Opera House.",
-    remainingSeats: 15,
-    totalSeats: 50,
-    price: 85000,
-    posterUrl: "/placeholder.svg?height=200&width=150",
-    isReserved: false,
-  },
-  {
-    id: 2,
-    title: "Hamilton",
-    timeRange: "19:30 ~ 22:00",
-    description:
-      "The revolutionary musical about Alexander Hamilton, America's founding father, told through hip-hop and R&B.",
-    remainingSeats: 3,
-    totalSeats: 60,
-    price: 120000,
-    posterUrl: "/placeholder.svg?height=200&width=150",
-    isReserved: true,
-  },
-  {
-    id: 3,
-    title: "The Lion King",
-    timeRange: "15:00 ~ 17:30",
-    description: "Disney's award-winning musical brings the African savanna to life with stunning costumes and music.",
-    remainingSeats: 28,
-    totalSeats: 80,
-    price: 95000,
-    posterUrl: "/placeholder.svg?height=200&width=150",
-    isReserved: false,
-  },
-  {
-    id: 4,
-    title: "Wicked",
-    timeRange: "20:00 ~ 22:45",
-    description: "The untold story of the witches of Oz, exploring friendship, love, and the nature of good and evil.",
-    remainingSeats: 0,
-    totalSeats: 45,
-    price: 110000,
-    posterUrl: "/placeholder.svg?height=200&width=150",
-    isReserved: false,
-  },
-  {
-    id: 5,
-    title: "Chicago",
-    timeRange: "18:00 ~ 20:15",
-    description: "A dazzling musical about fame, fortune, and murder in the jazz age of 1920s Chicago.",
-    remainingSeats: 22,
-    totalSeats: 55,
-    price: 75000,
-    posterUrl: "/placeholder.svg?height=200&width=150",
-    isReserved: true,
-  },
-]
 
 const mockUser = {
   name: "John Doe",
   email: "john.doe@example.com",
 }
 
+
 export default function HomePage() {
+  const [user, setUser] = useState(null)
+  const [allMusicals, setAllMusicals] = useState([])
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [activeSort, setActiveSort] = useState("latest")
-  const [musicals, setMusicals] = useState(mockMusicals)
+  const [musicals, setMusicals] = useState([])
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [selectedMusicalId, setSelectedMusicalId] = useState(null)
   const [showReservationModal, setShowReservationModal] = useState(false)
   const [selectedMusical, setSelectedMusical] = useState(null)
 
+  const checkAuthStatus = async () => {
+    if (isAuthenticated()) {
+      try {
+        const userData = await userAPI.getProfile()
+        setUser(userData)
+        setIsLoggedIn(true)
+      } catch (err) {
+        logout()
+        setIsLoggedIn(false)
+      }
+    }
+  }
+
+  useEffect(() => {
+    checkAuthStatus()
+  }, [])
+  
   useEffect(() => {
     if (!isLoggedIn && activeSort === "my-reservations") {
       handleSortChange("latest")
@@ -96,13 +60,33 @@ export default function HomePage() {
     setIsLoggedIn(!isLoggedIn)
   }
 
+  useEffect(() => {
+    fetchMusicals()
+  }, [])
+  
+  // 🛑 현재는 백엔드에서 뮤지컬 목록을 하드코딩하여 응답 중
+  // ✅ 추후 연동 필요: DB에서 뮤지컬 정보를 조회하도록 백엔드 구현 필요
+  // 🔧 연동 대상: MusicalController.getMusicals
+  const fetchMusicals = async () => {
+    try {
+      const data = await musicalAPI.getMusicals()
+      setAllMusicals(data)
+      setMusicals(data) // 초기 정렬 없이 전체 목록 표시
+    } catch (err) {
+      console.error("Failed to fetch musicals:", err)
+    }
+  }
+
   const handleSortChange = (sortOption) => {
     setActiveSort(sortOption)
-    let sortedMusicals = [...mockMusicals]
-
+    let sortedMusicals = [...allMusicals] // 원본 기준 정렬
+  
     switch (sortOption) {
       case "most-reserved":
-        sortedMusicals.sort((a, b) => b.totalSeats - b.remainingSeats - (a.totalSeats - a.remainingSeats))
+        sortedMusicals.sort(
+          (a, b) =>
+            b.totalSeats - b.remainingSeats - (a.totalSeats - a.remainingSeats)
+        )
         break
       case "my-reservations":
         sortedMusicals = sortedMusicals.filter((musical) => musical.isReserved)
@@ -129,28 +113,43 @@ export default function HomePage() {
     }
   }
 
-  const confirmCancelReservation = () => {
-    if (selectedMusicalId) {
-      setMusicals((prev) =>
-        prev.map((m) =>
-          m.id === selectedMusicalId ? { ...m, isReserved: false, remainingSeats: m.remainingSeats + 1 } : m,
-        ),
+
+// 🛑 현재는 프론트에서만 예약 취소 처리
+// ✅ 백엔드 연동 필요: 예약 취소 요청을 DELETE 방식으로 서버에 전달해야 함
+// 🔧 연동 대상: ReservationController 또는 별도의 CancelReservationController
+const confirmCancelReservation = async () => {
+  if (!selectedMusicalId) return
+
+  try {
+    await musicalAPI.cancelReservation(selectedMusicalId) // 🧩 실제 API 호출
+
+    setMusicals((prev) =>
+      prev.map((m) =>
+        m.id === selectedMusicalId ? { ...m, isReserved: false, remainingSeats: m.remainingSeats + 1 } : m,
       )
-    }
+    )
+  } catch (error) {
+    console.error("예약 취소 실패:", error)
+    // 실패 알림 표시 등 추가 가능
+  } finally {
     setShowCancelModal(false)
     setSelectedMusicalId(null)
   }
+}
 
-  const handleReservationSuccess = (seatId) => {
-    // 예약 성공 시 처리
-    setMusicals((prev) =>
-      prev.map((m) =>
-        m.id === selectedMusical.id ? { ...m, isReserved: true, remainingSeats: m.remainingSeats - 1 } : m,
-      ),
-    )
+const handleReservationSuccess = async (seatId) => {
+  try {
+    // 최신 뮤지컬 데이터 다시 불러오기 (예약 반영된 상태로)
+    const updatedMusicals = await musicalAPI.getMusicals()
+    setMusicals(updatedMusicals)
+  } catch (error) {
+    console.error("🎭 뮤지컬 갱신 실패:", error)
+  } finally {
     setShowReservationModal(false)
     setSelectedMusical(null)
   }
+}
+
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("ko-KR").format(price) + "원"
