@@ -12,5 +12,13 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
+    proxy: {
+      // 👇 /api로 시작하는 요청은 백엔드로 프록시
+      "/api": {
+        target: "http://localhost:8080", // 백엔드 주소
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 })
