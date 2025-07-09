@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Clock, X } from "lucide-react"
-import { Button } from "@/components/ui/Button"
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -10,8 +10,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/Dialog"
-import { Alert, AlertDescription } from "@/components/ui/Alert"
+} from "@/components/ui/dialog"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // Generate seat grid data (A-J rows, 1-14 columns)
 const generateSeatGrid = () => {
