@@ -8,6 +8,7 @@ async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`
   
   const defaultOptions = {
+    credentials: "include",
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -16,10 +17,10 @@ async function apiRequest(endpoint, options = {}) {
   }
 
   // 토큰이 있다면 헤더에 추가
-  const token = getAuthToken()
-  if (token && !isTokenExpired(token)) {
-    defaultOptions.headers.Authorization = `Bearer ${token}`
-  }
+  // const token = getAuthToken()
+  // if (token && !isTokenExpired(token)) {
+  //   defaultOptions.headers.Authorization = `Bearer ${token}`
+  // }
 
   try {
     const response = await fetch(url, defaultOptions)
