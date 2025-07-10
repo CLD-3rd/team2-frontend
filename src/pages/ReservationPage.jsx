@@ -14,38 +14,6 @@ import {
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-// Mock musical data
-const mockMusicals = {
-  1: {
-    id: 1,
-    title: "The Phantom of the Opera",
-    timeRange: "12:15 ~ 14:34",
-    date: "2025.07.09(Wed)",
-    price: 85000,
-    posterUrl: "/placeholder.svg?height=200&width=150",
-  },
-  2: {
-    id: 2,
-    title: "Hamilton",
-    timeRange: "19:30 ~ 22:00",
-    date: "2025.07.09(Wed)",
-    price: 120000,
-    posterUrl: "/placeholder.svg?height=200&width=150",
-  },
-  3: {
-    id: 3,
-    title: "The Lion King",
-    timeRange: "15:00 ~ 17:30",
-    date: "2025.07.09(Wed)",
-    price: 95000,
-    posterUrl: "/placeholder.svg?height=200&width=150",
-  },
-}
-
-const mockUser = {
-  name: "John Doe",
-  email: "john.doe@example.com",
-}
 
 // Generate seat grid data (A-J rows, 1-14 columns)
 const generateSeatGrid = () => {
