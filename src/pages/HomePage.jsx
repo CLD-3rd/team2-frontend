@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import ReservationModal from "@/components/ReservationModal"
 
 const mockMusicals = [
   {
@@ -80,10 +81,45 @@ const mockUser = {
 export default function HomePage() {
   const navigate = useNavigate()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [user, setUser] = useState(null)
   const [activeSort, setActiveSort] = useState("latest")
   const [musicals, setMusicals] = useState(mockMusicals)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [selectedMusicalId, setSelectedMusicalId] = useState(null)
+  const [showReservationModal, setShowReservationModal] = useState(false)
+  const [selectedMusical, setSelectedMusical] = useState(null)
+
+  // 컴포넌트 마운트 시와 쿠키 변경 시 로그인 상태 체크
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        console.log('Checking login status...'); // 디버깅용
+        
+        // 백엔드에 로그인 상태 확인 요청
+        const response = await fetch('http://localhost:8080/api/user/me', {
+          credentials: 'include' // 쿠키 포함
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          console.log('User data:', userData);
+          setUser(userData);
+          setIsLoggedIn(true);
+        } else {
+          console.log('Not logged in or error:', response.status);
+          setUser(null);
+          setIsLoggedIn(false);
+        }
+      } catch (error) {
+        console.error('Error checking login status:', error);
+        setUser(null);
+        setIsLoggedIn(false);
+      }
+    };
+
+    // 초기 체크
+    checkLoginStatus();
+  }, []);
 
   useEffect(() => {
     if (!isLoggedIn && activeSort === "my-reservations") {
@@ -92,7 +128,27 @@ export default function HomePage() {
   }, [isLoggedIn])
 
   const handleLogin = () => {
-    setIsLoggedIn(!isLoggedIn)
+    if (isLoggedIn) {
+      // 로그아웃 처리
+      console.log("Logging out...")
+      // 백엔드 로그아웃 엔드포인트 호출
+      fetch("http://localhost:8080/api/auth/logout", {
+        method: "POST",
+        credentials: "include", // 쿠키 포함
+      })
+        .then(() => {
+          // 쿠키 삭제
+          document.cookie = "accessToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
+          setIsLoggedIn(false)
+        })
+        .catch((error) => {
+          console.error("Logout failed:", error)
+        })
+    } else {
+      // 로그인 처리
+      console.log("Redirecting to Google OAuth...")
+      window.location.href = "http://localhost:8080/oauth2/authorization/google"
+    }
   }
 
   const handleSortChange = (sortOption) => {
@@ -122,8 +178,25 @@ export default function HomePage() {
       setSelectedMusicalId(musicalId)
       setShowCancelModal(true)
     } else {
-      navigate(`/reservation/${musicalId}`)
+      console.log('Opening reservation modal for:', musical.title)
+      setSelectedMusical(musical)
+      setShowReservationModal(true)
     }
+  }
+
+  const handleReservationSuccess = (seatId) => {
+    console.log('Reservation success for seat:', seatId)
+    if (selectedMusical) {
+      setMusicals((prev) =>
+        prev.map((m) =>
+          m.id === selectedMusical.id
+            ? { ...m, isReserved: true, remainingSeats: m.remainingSeats - 1 }
+            : m
+        )
+      )
+    }
+    setShowReservationModal(false)
+    setSelectedMusical(null)
   }
 
   const confirmCancelReservation = () => {
@@ -162,8 +235,11 @@ export default function HomePage() {
               <Grape className="h-8 w-8 text-purple-600 mr-2" />
               <span className="text-xl font-bold text-gray-900">SaveMyPodo</span>
             </div>
+            {/* 로그인 버튼 */}
             <div className="flex items-center gap-4">
-              {isLoggedIn && <span className="text-gray-700 font-medium">{mockUser.name}</span>}
+              {isLoggedIn && user && (
+                <span className="text-gray-700 font-medium">{user.nickname}</span>
+              )}
               <Button onClick={handleLogin} variant={isLoggedIn ? "outline" : "default"}>
                 {isLoggedIn ? "Logout" : "Login"}
               </Button>
@@ -285,6 +361,14 @@ export default function HomePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reservation Modal */}
+      <ReservationModal
+        open={showReservationModal}
+        onOpenChange={setShowReservationModal}
+        musical={selectedMusical}
+        onReservationSuccess={handleReservationSuccess}
+      />
     </div>
   )
 }
