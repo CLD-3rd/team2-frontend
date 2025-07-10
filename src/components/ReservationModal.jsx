@@ -24,7 +24,7 @@ const generateSeatGrid = (reservedSeats = []) => {
   const seats = []
 
   // Convert reserved seats array to Set for efficient lookup
-  const reservedSeatsSet = new Set(reservedSeats.map(seat => seat.seatId))
+  const reservedSeatsSet = new Set(reservedSeats)
 
   rows.forEach((row) => {
     for (let col = 1; col <= 14; col++) {
@@ -71,7 +71,12 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
     setErrorMessage("")
   
     try {
-      const seatsData = await musicalAPI.getSeats(musical.id, musical.date)
+      console.log("🔄 좌석 정보를 불러오는 중... musicalId:", musical.id, "date:", musical.date)
+      // const seatsData = await musicalAPI.getSeats(musical.id, musical.date)
+      const seatsData = {
+        "musicalId": 1,
+        "reservedSeats": [ "A1", "A3", "B5", "C2", "D4", "E6", "F7", "G8", "H9", "I10", "J11"]
+      }
       console.log("✅ getSeats 응답:", seatsData)
       const seatGrid = generateSeatGrid(seatsData?.reservedSeats || [])
       setSeats(seatGrid)
