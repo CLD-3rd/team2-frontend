@@ -1,5 +1,3 @@
-"use client"
-
 import { isAuthenticated, logout } from "@/lib/auth"
 import { useState, useEffect } from "react"
 import { Grape, Clock, Users } from "lucide-react"
