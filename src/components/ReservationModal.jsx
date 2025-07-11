@@ -3,7 +3,7 @@
 import { formatDate } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import { Clock, X } from "lucide-react"
-import { Button } from "@/components/ui/Button"
+import { Button } from "@/components/ui/Button.jsx"
 import {
   Dialog,
   DialogContent,
