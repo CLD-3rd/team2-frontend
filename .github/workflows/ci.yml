@@ -1,7 +1,10 @@
 name: 🐳 Frontend CI - Build & Push
 
 on:
-    workflow_dispatch
+  push:
+    branches:
+      - dev
+        
 
 jobs:
   ci:
