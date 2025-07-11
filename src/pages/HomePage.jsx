@@ -176,11 +176,16 @@ const confirmCancelReservation = async () => {
     setShowCancelModal(false)
     setShowCancelSuccess(true)
 
+    // 내 예약목록 조회일 때만 isReserved가 true인 것만 반영
     const updatedMusicals = await musicalAPI.getMusicals()
-    setMusicals(updatedMusicals.filter(musical => musical.isReserved === true))
+    if (activeSort === "my-reservations") {
+      setMusicals(updatedMusicals.filter(musical => musical.isReserved === true))
+    } else {
+      setMusicals(updatedMusicals)
+    }
 
-    // window.location.reload()
-    console.error("예약 취소 실패:", error)
+  } catch (error) {
+    console.error("🎭 예약 취소 실패:", error)
     // 실패 알림 표시 등 추가 가능
   } finally {
     setShowCancelModal(false)
