@@ -3,7 +3,7 @@
 import { formatDate } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import { Clock, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/Button"
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 
-} from "@/components/ui/dialog"
+} from "@/components/ui/Dialog.jsx"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { musicalAPI } from "@/lib/api"
 import { getUserId } from "@/lib/auth"
