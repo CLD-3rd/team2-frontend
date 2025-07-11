@@ -95,28 +95,11 @@ export default function HomePage() {
     fetchMusicals()
   }, [])
 
-  // 🛑 현재는 백엔드에서 뮤지컬 목록을 하드코딩하여 응답 중
-  // ✅ 추후 연동 필요: DB에서 뮤지컬 정보를 조회하도록 백엔드 구현 필요
-  // 🔧 연동 대상: MusicalController.getMusicals
+
   const fetchMusicals = async () => {
     try {
       const data = await musicalAPI.getMusicals()
-      // const data =  [
-      //                 {
-      //                   "id": 1,
-      //                   "title": "뮤지컬 제목",
-      //                   "timeRange": "14:00 ~ 16:30",
-      //                   "description": "뮤지컬 설명",
-      //                   "remainingSeats": 115,
-      //                   "totalSeats": 140,
-      //                   "price": 85000,
-      //                   "posterUrl": "/images/musical1.jpg",
-      //                   "isReserved": true,
-      //                   "date": "2024-03-20",
-      //                   "location": "공연장 이름",
-      //                   "duration": "150"
-      //                 }
-      //                 ] // 예시 데이터
+      console.log("Fetched musicals:", data)
       setAllMusicals(data)
       setMusicals(data) // 초기 정렬 없이 전체 목록 표시
     } catch (err) {
@@ -124,31 +107,38 @@ export default function HomePage() {
     }
   }
 
-  const handleSortChange = (sortOption) => {
+  const handleSortChange = async (sortOption) => {
     setActiveSort(sortOption)
-    let sortedMusicals = [...allMusicals] // 원본 기준 정렬
-  
-    switch (sortOption) {
-      case "most-reserved":
-        sortedMusicals.sort(
-          (a, b) =>
-            140 - b.remainingSeats - (140 - a.remainingSeats)
-        )
-        break
-      case "my-reservations":
-        sortedMusicals = sortedMusicals.filter((musical) => musical.isReserved)
-        break
-      case "newest":  // latest를 newest로 변경
-        sortedMusicals.sort((a, b) => {
-          const dateA = new Date(a.date)
-          const dateB = new Date(b.date)
-          return dateB - dateA  // 최신 날짜가 먼저 오도록 내림차순 정렬
-        })
-        break
-      default:
-        break
+    
+    // 항상 최신 데이터를 API에서 받아오도록 변경
+    try {
+      const data = await musicalAPI.getMusicals()
+      let sortedMusicals = [...data] // API에서 받은 최신 데이터 기준 정렬
+
+      switch (sortOption) {
+        case "most-reserved":
+          sortedMusicals.sort(
+            (a, b) =>
+              140 - b.remainingSeats - (140 - a.remainingSeats)
+          )
+          break
+        case "my-reservations":
+          sortedMusicals = sortedMusicals.filter((musical) => musical.isReserved)
+          break
+        case "newest":
+          sortedMusicals.sort((a, b) => {
+            const dateA = new Date(a.date)
+            const dateB = new Date(b.date)
+            return dateB - dateA
+          })
+          break
+        default:
+          break
+      }
+      setMusicals(sortedMusicals)
+    } catch (err) {
+      console.error("Failed to fetch musicals:", err)
     }
-    setMusicals(sortedMusicals)
   }
 
 
@@ -168,9 +158,7 @@ export default function HomePage() {
   }
 
 
-// 🛑 현재는 프론트에서만 예약 취소 처리
-// ✅ 백엔드 연동 필요: 예약 취소 요청을 DELETE 방식으로 서버에 전달해야 함
-// 🔧 연동 대상: ReservationController 또는 별도의 CancelReservationController
+
 const confirmCancelReservation = async () => {
   if (!selectedMusicalId) return
 
