@@ -127,9 +127,12 @@ export default function HomePage() {
           break
         case "newest":
           sortedMusicals.sort((a, b) => {
-            const dateA = new Date(a.date)
-            const dateB = new Date(b.date)
-            return dateB - dateA
+            const today = new Date()
+            const dateA = new Date(a.date + "T00:00:00")
+            const dateB = new Date(b.date + "T00:00:00")
+            const diffA = Math.abs(dateA - today)
+            const diffB = Math.abs(dateB - today)
+            return diffA - diffB
           })
           break
         default:
@@ -164,7 +167,7 @@ const confirmCancelReservation = async () => {
 
   try {
     await musicalAPI.cancelReservation(selectedMusicalId) // 🧩 실제 API 호출
-
+    
     setMusicals((prev) =>
       prev.map((m) =>
         m.id === selectedMusicalId ? { ...m, isReserved: false, remainingSeats: m.remainingSeats + 1 } : m,
@@ -172,7 +175,11 @@ const confirmCancelReservation = async () => {
     )
     setShowCancelModal(false)
     setShowCancelSuccess(true)
-  } catch (error) {
+
+    const updatedMusicals = await musicalAPI.getMusicals()
+    setMusicals(updatedMusicals.filter(musical => musical.isReserved === true))
+
+    // window.location.reload()
     console.error("예약 취소 실패:", error)
     // 실패 알림 표시 등 추가 가능
   } finally {
