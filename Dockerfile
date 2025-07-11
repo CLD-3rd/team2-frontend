@@ -6,10 +6,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
 
-<<<<<<< HEAD
+
 # 전체 소스 코드 복사 후 빌드 실행
 COPY . .
-=======
-# 정적 소스로 빌드
->>>>>>> origin/dev
 RUN npm run build
