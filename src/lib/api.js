@@ -16,12 +16,6 @@ async function apiRequest(endpoint, options = {}) {
     ...options,
   }
 
-  // 토큰이 있다면 헤더에 추가
-  // const token = getAuthToken()
-  // if (token && !isTokenExpired(token)) {
-  //   defaultOptions.headers.Authorization = `Bearer ${token}`
-  // }
-
   try {
     const response = await fetch(url, defaultOptions)
     
@@ -42,14 +36,14 @@ export const musicalAPI = {
   // 뮤지컬 목록 조회
   getMusicals: () => apiRequest('/musicals'),
   
-  // 뮤지컬 상세 조회
+  // 뮤지컬 상세 조회 X
   getMusical: (id) => apiRequest(`/musicals/${id}`),
   
   // 좌석 정보 조회
-  getSeats: (musicalId, date) => apiRequest(`/musicals/${musicalId}/seats?date=${date}`),
+  getSeats: (musicalId) => apiRequest(`/musicals/${musicalId}/seats`),
   
   // 예약 생성
-  createReservation: (data) => apiRequest('/reservations', {
+  createReservation: (data, mid) => apiRequest(`/reservations/${mid}`, {
     method: 'POST',
     body: JSON.stringify(data),
   }),

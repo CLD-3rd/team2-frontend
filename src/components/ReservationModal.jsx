@@ -50,6 +50,8 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingSeats, setIsLoadingSeats] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false)
+
 
   // 좌석 정보 로드
   useEffect(() => {
@@ -63,7 +65,7 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
   // ✅ 추후 연동 필요: DB 또는 예약 내역 기반으로 실제 예약된 좌석을 불러오도록 수정 필요
   const loadSeats = async () => {
     if (!musical || !musical.date) {
-      console.warn("musical.date가 없거나 잘못되었습니다.", musical)
+      // console.warn("musical.date가 없거나 잘못되었습니다.", musical)
       return
     }
   
@@ -71,14 +73,12 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
     setErrorMessage("")
   
     try {
-      console.log("🔄 좌석 정보를 불러오는 중... musicalId:", musical.id, "date:", musical.date)
-      // const seatsData = await musicalAPI.getSeats(musical.id, musical.date)
-      const seatsData = {
-        "musicalId": 1,
-        "reservedSeats": [ "A1", "A3", "B5", "C2", "D4", "E6", "F7", "G8", "H9", "I10", "J11"]
-      }
-      console.log("✅ getSeats 응답:", seatsData)
-      const seatGrid = generateSeatGrid(seatsData?.reservedSeats || [])
+      
+      // 예시 데이터: [{"id":1,"seatid":"A1"}, {"id":2,"seatid":"A2"}, ...]
+      // const seatsData = [{"id":1,"seatid":"A1"},{"id":2,"seatid":"A2"},{"id":3,"seatid":"A3"},{"id":4,"seatid":"A4"}]
+      const seatsData = await musicalAPI.getSeats(musical.id)
+      // console.log("Loaded seats data:", seatsData)
+      const seatGrid = generateSeatGrid(seatsData.map(seat => seat.seatid))
       setSeats(seatGrid)
     } catch (error) {
       console.error('❌ Failed to load seats:', error)
@@ -145,18 +145,20 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
       const reservationData = {
         musicalId: musical.id,
         date: musical.date,
-        seats: selectedSeats,
-        totalPrice: totalPrice,
+        sid: selectedSeats[0],
+        // totalPrice: totalPrice,
         userId: getUserId(),
       }
   
-      const result = await musicalAPI.createReservation(reservationData)
+      const result = await musicalAPI.createReservation(reservationData, reservationData.musicalId)
   
-      // ✅ 백엔드에서 오류 없었을 때만 상태 업데이트
-      console.log("Reservation successful!", result)
-      onReservationSuccess(selectedSeats[0])
-  
+      // 성공 알림 모달 표시
+      setShowErrorAlert(false)
+      setErrorMessage("")
+      setShowSuccessAlert(true)
       setShowConfirmModal(false)
+      
+      console.log("Reservation successful!", result)
       await loadSeats()
       setSelectedSeats([])
     } catch (error) {
@@ -172,7 +174,13 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
       setIsLoading(false)
     }
   }
-  
+
+  // 성공 알림 모달 닫기 시 처리
+  const handleSuccessClose = () => {
+    setShowSuccessAlert(false)
+    onReservationSuccess(selectedSeats[0])
+    handleClose()
+  }
 
   const handleClose = () => {
     setSeats([])
@@ -186,6 +194,7 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
 
   return (
     <>
+      {/* 메인 예약 모달 */}
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="max-w-6xl">
           <DialogHeader>
@@ -203,6 +212,7 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
               </AlertDescription>
             </Alert>
           )}
+
 
           {/* Loading Alert */}
           {isLoadingSeats && (
@@ -349,7 +359,7 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
+                
       {/* Confirmation Modal */}
       <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
         <DialogContent>
@@ -379,6 +389,27 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
             </Button>
             <Button onClick={confirmReservation} disabled={isLoading} className="bg-purple-600 hover:bg-purple-700">
               {isLoading ? "Processing..." : "Yes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+
+      </Dialog>
+       
+      {/* 성공 알림 모달 */}
+      <Dialog open={showSuccessAlert} onOpenChange={setShowSuccessAlert}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>예약 완료</DialogTitle>
+          </DialogHeader>
+          <div className="text-center py-4">
+            <p className="text-green-600">성공적으로 예약이 되었습니다.</p>
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={handleSuccessClose}
+              className="w-full"
+            >
+              확인
             </Button>
           </DialogFooter>
         </DialogContent>

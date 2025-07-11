@@ -19,18 +19,20 @@ export default function HomePage() {
   const [user, setUser] = useState(null)
   const [allMusicals, setAllMusicals] = useState([])
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [activeSort, setActiveSort] = useState("latest")
+  const [activeSort, setActiveSort] = useState("newest")
   const [musicals, setMusicals] = useState([])
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [selectedMusicalId, setSelectedMusicalId] = useState(null)
   const [showReservationModal, setShowReservationModal] = useState(false)
   const [selectedMusical, setSelectedMusical] = useState(null)
+  const [showCancelSuccess, setShowCancelSuccess] = useState(false)
+
 
   // 컴포넌트 마운트 시와 쿠키 변경 시 로그인 상태 체크
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        console.log('Checking login status...'); // 디버깅용
+        // console.log('Checking login status...'); // 디버깅용
         
         // 백엔드에 로그인 상태 확인 요청
         const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/api/user/me`, {
@@ -39,16 +41,16 @@ export default function HomePage() {
         
         if (response.ok) {
           const userData = await response.json();
-          console.log('User data:', userData);
+          // console.log('User data:', userData);
           setUser(userData);
           setIsLoggedIn(true);
         } else {
-          // console.log('Not logged in or error:', response.status);
+
           setUser(null);
           setIsLoggedIn(false);
         }
       } catch (error) {
-        // console.error('Error checking login status:', error);
+        
         setUser(null);
         setIsLoggedIn(false);
       }
@@ -60,7 +62,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isLoggedIn && activeSort === "my-reservations") {
-      handleSortChange("latest")
+      handleSortChange("newest")
     }
   }, [isLoggedIn])
 
@@ -99,6 +101,22 @@ export default function HomePage() {
   const fetchMusicals = async () => {
     try {
       const data = await musicalAPI.getMusicals()
+      // const data =  [
+      //                 {
+      //                   "id": 1,
+      //                   "title": "뮤지컬 제목",
+      //                   "timeRange": "14:00 ~ 16:30",
+      //                   "description": "뮤지컬 설명",
+      //                   "remainingSeats": 115,
+      //                   "totalSeats": 140,
+      //                   "price": 85000,
+      //                   "posterUrl": "/images/musical1.jpg",
+      //                   "isReserved": true,
+      //                   "date": "2024-03-20",
+      //                   "location": "공연장 이름",
+      //                   "duration": "150"
+      //                 }
+      //                 ] // 예시 데이터
       setAllMusicals(data)
       setMusicals(data) // 초기 정렬 없이 전체 목록 표시
     } catch (err) {
@@ -114,22 +132,28 @@ export default function HomePage() {
       case "most-reserved":
         sortedMusicals.sort(
           (a, b) =>
-            b.totalSeats - b.remainingSeats - (a.totalSeats - a.remainingSeats)
+            140 - b.remainingSeats - (140 - a.remainingSeats)
         )
         break
       case "my-reservations":
         sortedMusicals = sortedMusicals.filter((musical) => musical.isReserved)
         break
-      case "latest":
+      case "newest":  // latest를 newest로 변경
+        sortedMusicals.sort((a, b) => {
+          const dateA = new Date(a.date)
+          const dateB = new Date(b.date)
+          return dateB - dateA  // 최신 날짜가 먼저 오도록 내림차순 정렬
+        })
+        break
       default:
         break
     }
-
     setMusicals(sortedMusicals)
   }
 
 
   const handleReservation = (musicalId) => {
+    console.log("Handling reservation for musical ID:", musicalId)
     const musical = musicals.find((m) => m.id === musicalId)
     if (!musical) return
 
@@ -158,6 +182,8 @@ const confirmCancelReservation = async () => {
         m.id === selectedMusicalId ? { ...m, isReserved: false, remainingSeats: m.remainingSeats + 1 } : m,
       )
     )
+    setShowCancelModal(false)
+    setShowCancelSuccess(true)
   } catch (error) {
     console.error("예약 취소 실패:", error)
     // 실패 알림 표시 등 추가 가능
@@ -222,11 +248,11 @@ const handleReservationSuccess = async (seatId) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-wrap gap-2 mb-6">
           <Button
-            variant={activeSort === "latest" ? "default" : "outline"}
-            onClick={() => handleSortChange("latest")}
+            variant={activeSort === "newest" ? "default" : "outline"}
+            onClick={() => handleSortChange("newest")}
             className="flex-1 sm:flex-none"
           >
-            Latest
+            Newest
           </Button>
           <Button
             variant={activeSort === "most-reserved" ? "default" : "outline"}
@@ -280,7 +306,7 @@ const handleReservationSuccess = async (seatId) => {
                         <div className="flex items-center text-sm text-gray-600 mt-2 sm:mt-0">
                           <Users className="h-4 w-4 mr-1" />
                           <span className={musical.remainingSeats === 0 ? "text-red-600 font-semibold" : ""}>
-                            {musical.remainingSeats}/{musical.totalSeats} seats
+                            {musical.remainingSeats}/140 seats
                           </span>
                         </div>
                       </div>
@@ -331,6 +357,22 @@ const handleReservationSuccess = async (seatId) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+<Dialog open={showCancelSuccess} onOpenChange={setShowCancelSuccess}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>예약 취소 완료</DialogTitle>
+      <DialogDescription>
+        예약이 성공적으로 취소되었습니다.
+      </DialogDescription>
+    </DialogHeader>
+    <DialogFooter>
+      <Button onClick={() => setShowCancelSuccess(false)}>
+        닫기
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
 
       {/* Reservation Modal (팝업) */}
       <ReservationModal
