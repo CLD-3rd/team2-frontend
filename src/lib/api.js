@@ -7,10 +7,8 @@ const API_BASE_URL = `${import.meta.env.VITE_SERVER_URL}/api`
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`
   
-   const isLoggedIn = !!getAuthToken() && !isTokenExpired(getAuthToken())
-
   const defaultOptions = {
-    ...(isLoggedIn && { credentials: "include" }),
+    credentials: "include",
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,

@@ -71,15 +71,18 @@ export default function HomePage() {
       // 로그아웃 처리
       console.log("Logging out...")
       // 백엔드 로그아웃 엔드포인트 호출
-      fetch(`${import.meta.env.VITE_SERVER_URL}/api/auth/logout`, {
+      fetch(`${import.meta.env.VITE_SERVER_URL}/api/user/logout`, {
         method: "POST",
         credentials: "include", // 쿠키 포함
       })
         .then(() => {
-          // 쿠키 삭제
-          document.cookie = "accessToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
-          setIsLoggedIn(false)
-          // navigate("/")
+            // JS로 삭제 가능한 쿠키 모두 삭제
+        document.cookie.split(";").forEach(cookie => {
+          const name = cookie.split("=")[0].trim();
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+        });
+        setIsLoggedIn(false);
+        setUser(null);
         })
         .catch((error) => {
           console.error("Logout failed:", error)
