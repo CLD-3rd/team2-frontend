@@ -1,7 +1,7 @@
 import { isAuthenticated, logout } from "@/lib/auth"
 import { useState, useEffect } from "react"
 import { Grape, Clock, Users } from "lucide-react"
-import { Button } from "@/components/ui/Button"
+import { Button } from "@/components/ui/Button.jsx"
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/Dialog"
+} from "@/components/ui/Dialog.jsx"
 import ReservationModal from "@/components/ReservationModal"
 import { musicalAPI } from "@/lib/api"
 
