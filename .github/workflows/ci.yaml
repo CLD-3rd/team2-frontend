@@ -1,0 +1,66 @@
+name: 🐳 Frontend CI - Build & Push
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - ci/*
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Setup Node  
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'  # npm 캐시 사용
+
+      - name: install deps
+        run: npm ci 
+
+      - name: Build and Export
+        run: |
+          npm run build
+        env:
+          VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
+
+      # 빌드 결과물을 아티팩트로 저장
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-files
+          path: dist/
+
+  cd:
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-files
+          path: dist/
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::061039804626:role/SaveMyPodo-GitHubActionsOIDCRole-Frontend
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC 
+          aws-region: ${{ secrets.AWS_REGION }}
+          
+      - name: Upload to S3 using AWS CLI
+        run: |
+          aws s3 sync ./dist s3://${{ secrets.S3_BUCKET_NAME }} --delete
+          
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
