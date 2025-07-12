@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-push:
+  ci:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,15 +20,33 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+          cache: 'npm'  # npm 캐시 사용
 
       - name: install deps
         run: npm ci 
-        working-directory: .
 
       - name: Build and Export
         run: |
           npm run build
-        working-directory: .
+        env:
+          VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
+
+      # 빌드 결과물을 아티팩트로 저장
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-files
+          path: dist/
+
+  cd:
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-files
+          path: dist/
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4

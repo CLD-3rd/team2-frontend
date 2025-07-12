@@ -3,7 +3,7 @@
 import { formatDate } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import { Clock, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/Button.jsx"
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 
-} from "@/components/ui/dialog"
+} from "@/components/ui/Dialog.jsx"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { musicalAPI } from "@/lib/api"
 import { getUserId } from "@/lib/auth"
@@ -22,7 +22,7 @@ import { getUserId } from "@/lib/auth"
 const generateSeatGrid = (reservedSeats = []) => {
   const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
   const seats = []
-
+  console.log("Generating seat grid with reserved seats:", reservedSeats)
   // Convert reserved seats array to Set for efficient lookup
   const reservedSeatsSet = new Set(reservedSeats)
 
@@ -77,8 +77,8 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
       // 예시 데이터: [{"id":1,"seatid":"A1"}, {"id":2,"seatid":"A2"}, ...]
       // const seatsData = [{"id":1,"seatid":"A1"},{"id":2,"seatid":"A2"},{"id":3,"seatid":"A3"},{"id":4,"seatid":"A4"}]
       const seatsData = await musicalAPI.getSeats(musical.id)
-      // console.log("Loaded seats data:", seatsData)
-      const seatGrid = generateSeatGrid(seatsData.map(seat => seat.seatid))
+      console.log("Loaded seats data:", seatsData.musicalId)
+      const seatGrid = generateSeatGrid(seatsData.reservedSeats || [])
       setSeats(seatGrid)
     } catch (error) {
       console.error('❌ Failed to load seats:', error)
@@ -136,8 +136,6 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
     setShowConfirmModal(true)
   }
 
-  // ✅ 백엔드 연동 필요: musicalAPI.createReservation 호출하여 예약 정보 POST
-  // 👉 백엔드는 ReservationController.createReservation에서 DB 저장 처리 필요
   const confirmReservation = async () => {
     setIsLoading(true)
   
@@ -145,9 +143,9 @@ export default function ReservationModal({ open, onOpenChange, musical, onReserv
       const reservationData = {
         musicalId: musical.id,
         date: musical.date,
-        sid: selectedSeats[0],
+        seatName: selectedSeats[0],
         // totalPrice: totalPrice,
-        userId: getUserId(),
+        // userId: getUserId(),
       }
   
       const result = await musicalAPI.createReservation(reservationData, reservationData.musicalId)

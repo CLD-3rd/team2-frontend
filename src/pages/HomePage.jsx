@@ -1,7 +1,7 @@
 import { isAuthenticated, logout } from "@/lib/auth"
 import { useState, useEffect } from "react"
 import { Grape, Clock, Users } from "lucide-react"
-import { Button } from "@/components/ui/Button"
+import { Button } from "@/components/ui/Button.jsx"
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/Dialog"
+} from "@/components/ui/Dialog.jsx"
 import ReservationModal from "@/components/ReservationModal"
 import { musicalAPI } from "@/lib/api"
 
@@ -71,15 +71,18 @@ export default function HomePage() {
       // 로그아웃 처리
       console.log("Logging out...")
       // 백엔드 로그아웃 엔드포인트 호출
-      fetch(`${import.meta.env.VITE_SERVER_URL}/api/auth/logout`, {
+      fetch(`${import.meta.env.VITE_SERVER_URL}/api/user/logout`, {
         method: "POST",
         credentials: "include", // 쿠키 포함
       })
         .then(() => {
-          // 쿠키 삭제
-          document.cookie = "accessToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"
-          setIsLoggedIn(false)
-          // navigate("/")
+            // JS로 삭제 가능한 쿠키 모두 삭제
+        document.cookie.split(";").forEach(cookie => {
+          const name = cookie.split("=")[0].trim();
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+        });
+        setIsLoggedIn(false);
+        setUser(null);
         })
         .catch((error) => {
           console.error("Logout failed:", error)
@@ -95,28 +98,11 @@ export default function HomePage() {
     fetchMusicals()
   }, [])
 
-  // 🛑 현재는 백엔드에서 뮤지컬 목록을 하드코딩하여 응답 중
-  // ✅ 추후 연동 필요: DB에서 뮤지컬 정보를 조회하도록 백엔드 구현 필요
-  // 🔧 연동 대상: MusicalController.getMusicals
+
   const fetchMusicals = async () => {
     try {
       const data = await musicalAPI.getMusicals()
-      // const data =  [
-      //                 {
-      //                   "id": 1,
-      //                   "title": "뮤지컬 제목",
-      //                   "timeRange": "14:00 ~ 16:30",
-      //                   "description": "뮤지컬 설명",
-      //                   "remainingSeats": 115,
-      //                   "totalSeats": 140,
-      //                   "price": 85000,
-      //                   "posterUrl": "/images/musical1.jpg",
-      //                   "isReserved": true,
-      //                   "date": "2024-03-20",
-      //                   "location": "공연장 이름",
-      //                   "duration": "150"
-      //                 }
-      //                 ] // 예시 데이터
+      console.log("Fetched musicals:", data)
       setAllMusicals(data)
       setMusicals(data) // 초기 정렬 없이 전체 목록 표시
     } catch (err) {
@@ -124,31 +110,41 @@ export default function HomePage() {
     }
   }
 
-  const handleSortChange = (sortOption) => {
+  const handleSortChange = async (sortOption) => {
     setActiveSort(sortOption)
-    let sortedMusicals = [...allMusicals] // 원본 기준 정렬
-  
-    switch (sortOption) {
-      case "most-reserved":
-        sortedMusicals.sort(
-          (a, b) =>
-            140 - b.remainingSeats - (140 - a.remainingSeats)
-        )
-        break
-      case "my-reservations":
-        sortedMusicals = sortedMusicals.filter((musical) => musical.isReserved)
-        break
-      case "newest":  // latest를 newest로 변경
-        sortedMusicals.sort((a, b) => {
-          const dateA = new Date(a.date)
-          const dateB = new Date(b.date)
-          return dateB - dateA  // 최신 날짜가 먼저 오도록 내림차순 정렬
-        })
-        break
-      default:
-        break
+    
+    // 항상 최신 데이터를 API에서 받아오도록 변경
+    try {
+      const data = await musicalAPI.getMusicals()
+      let sortedMusicals = [...data] // API에서 받은 최신 데이터 기준 정렬
+
+      switch (sortOption) {
+        case "most-reserved":
+          sortedMusicals.sort(
+            (a, b) =>
+              140 - b.remainingSeats - (140 - a.remainingSeats)
+          )
+          break
+        case "my-reservations":
+          sortedMusicals = sortedMusicals.filter((musical) => musical.isReserved)
+          break
+        case "newest":
+          sortedMusicals.sort((a, b) => {
+            const today = new Date()
+            const dateA = new Date(a.date + "T00:00:00")
+            const dateB = new Date(b.date + "T00:00:00")
+            const diffA = Math.abs(dateA - today)
+            const diffB = Math.abs(dateB - today)
+            return diffA - diffB
+          })
+          break
+        default:
+          break
+      }
+      setMusicals(sortedMusicals)
+    } catch (err) {
+      console.error("Failed to fetch musicals:", err)
     }
-    setMusicals(sortedMusicals)
   }
 
 
@@ -168,15 +164,13 @@ export default function HomePage() {
   }
 
 
-// 🛑 현재는 프론트에서만 예약 취소 처리
-// ✅ 백엔드 연동 필요: 예약 취소 요청을 DELETE 방식으로 서버에 전달해야 함
-// 🔧 연동 대상: ReservationController 또는 별도의 CancelReservationController
+
 const confirmCancelReservation = async () => {
   if (!selectedMusicalId) return
 
   try {
     await musicalAPI.cancelReservation(selectedMusicalId) // 🧩 실제 API 호출
-
+    
     setMusicals((prev) =>
       prev.map((m) =>
         m.id === selectedMusicalId ? { ...m, isReserved: false, remainingSeats: m.remainingSeats + 1 } : m,
@@ -184,8 +178,17 @@ const confirmCancelReservation = async () => {
     )
     setShowCancelModal(false)
     setShowCancelSuccess(true)
+
+    // 내 예약목록 조회일 때만 isReserved가 true인 것만 반영
+    const updatedMusicals = await musicalAPI.getMusicals()
+    if (activeSort === "my-reservations") {
+      setMusicals(updatedMusicals.filter(musical => musical.isReserved === true))
+    } else {
+      setMusicals(updatedMusicals)
+    }
+
   } catch (error) {
-    console.error("예약 취소 실패:", error)
+    console.error("🎭 예약 취소 실패:", error)
     // 실패 알림 표시 등 추가 가능
   } finally {
     setShowCancelModal(false)
