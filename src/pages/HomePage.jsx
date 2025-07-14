@@ -32,33 +32,31 @@ export default function HomePage() {
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        // console.log('Checking login status...'); // 디버깅용
-        
-        // 백엔드에 로그인 상태 확인 요청
+        // 먼저 로그인 상태 확인
         const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/api/user/me`, {
-          credentials: 'include' // 쿠키 포함
+          credentials: 'include'
         });
         
         if (response.ok) {
           const userData = await response.json();
-          // console.log('User data:', userData);
           setUser(userData);
-          setIsLoggedIn(true);
+          setIsLoggedIn(true);  // 응답이 성공하면 로그인 상태로 설정
         } else {
-
           setUser(null);
           setIsLoggedIn(false);
         }
       } catch (error) {
-        
+        console.error('Failed to check login status:', error);
         setUser(null);
         setIsLoggedIn(false);
       }
     };
 
-    // 초기 체크
-    checkLoginStatus();
-  }, []);
+    // isLoggedIn이 false일 때만 상태 체크
+    if (!isLoggedIn) {
+      checkLoginStatus();
+    }
+  }, [isLoggedIn]); // isLoggedIn이 변경될 때마다 실행
 
   useEffect(() => {
     if (!isLoggedIn && activeSort === "my-reservations") {
