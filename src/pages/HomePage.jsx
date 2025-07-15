@@ -19,7 +19,7 @@ export default function HomePage() {
   const [user, setUser] = useState(null)
   const [allMusicals, setAllMusicals] = useState([])
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [activeSort, setActiveSort] = useState("newest")
+  const [activeSort, setActiveSort] = useState("most-reserved")
   const [musicals, setMusicals] = useState([])
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [selectedMusicalId, setSelectedMusicalId] = useState(null)
@@ -45,7 +45,6 @@ export default function HomePage() {
           setUser(userData);
           setIsLoggedIn(true);
         } else {
-
           setUser(null);
           setIsLoggedIn(false);
         }
@@ -251,18 +250,18 @@ const handleReservationSuccess = async (seatId) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-wrap gap-2 mb-6">
           <Button
-            variant={activeSort === "newest" ? "default" : "outline"}
-            onClick={() => handleSortChange("newest")}
-            className="flex-1 sm:flex-none"
-          >
-            Newest
-          </Button>
-          <Button
             variant={activeSort === "most-reserved" ? "default" : "outline"}
             onClick={() => handleSortChange("most-reserved")}
             className="flex-1 sm:flex-none"
           >
             Most Reserved
+          </Button>
+          <Button
+            variant={activeSort === "newest" ? "default" : "outline"}
+            onClick={() => handleSortChange("newest")}
+            className="flex-1 sm:flex-none"
+          >
+            Newest
           </Button>
           {isLoggedIn && (
             <Button
@@ -309,7 +308,7 @@ const handleReservationSuccess = async (seatId) => {
                         <div className="flex items-center text-sm text-gray-600 mt-2 sm:mt-0">
                           <Users className="h-4 w-4 mr-1" />
                           <span className={musical.remainingSeats === 0 ? "text-red-600 font-semibold" : ""}>
-                            {musical.remainingSeats}/140 seats
+                            {140 - musical.remainingSeats}/140 seats
                           </span>
                         </div>
                       </div>
