@@ -19,7 +19,7 @@ export default function HomePage() {
   const [user, setUser] = useState(null)
   const [allMusicals, setAllMusicals] = useState([])
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [activeSort, setActiveSort] = useState("")
+  const [activeSort, setActiveSort] = useState("newest")
   const [musicals, setMusicals] = useState([])
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [selectedMusicalId, setSelectedMusicalId] = useState(null)
@@ -29,32 +29,36 @@ export default function HomePage() {
 
 
   // 컴포넌트 마운트 시와 쿠키 변경 시 로그인 상태 체크
-  const checkLoginStatus = async () => {
-    try {
-      // 로그인 상태일 때만 API 호출
-      if (isLoggedIn) {
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        // console.log('Checking login status...'); // 디버깅용
+        
+        // 백엔드에 로그인 상태 확인 요청
         const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/api/user/me`, {
-          credentials: 'include'
+          credentials: 'include' // 쿠키 포함
         });
         
         if (response.ok) {
           const userData = await response.json();
+          // console.log('User data:', userData);
           setUser(userData);
+          setIsLoggedIn(true);
         } else {
+
           setUser(null);
           setIsLoggedIn(false);
         }
+      } catch (error) {
+        
+        setUser(null);
+        setIsLoggedIn(false);
       }
-    } catch (error) {
-      console.error('Failed to check login status:', error);
-      setUser(null);
-      setIsLoggedIn(false);
-    }
-  };
+    };
 
-  useEffect(() => {
+    // 초기 체크
     checkLoginStatus();
-  }, [isLoggedIn]);  // isLoggedIn이 변경될 때마다 실행
+  }, []);
 
   useEffect(() => {
     if (!isLoggedIn && activeSort === "my-reservations") {
@@ -69,11 +73,16 @@ export default function HomePage() {
       // 백엔드 로그아웃 엔드포인트 호출
       fetch(`${import.meta.env.VITE_SERVER_URL}/api/user/logout`, {
         method: "POST",
-        credentials: "include",
+        credentials: "include", // 쿠키 포함
       })
         .then(() => {
-          setUser(null);
-          setIsLoggedIn(false);
+            // JS로 삭제 가능한 쿠키 모두 삭제
+        document.cookie.split(";").forEach(cookie => {
+          const name = cookie.split("=")[0].trim();
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+        });
+        setIsLoggedIn(false);
+        setUser(null);
         })
         .catch((error) => {
           console.error("Logout failed:", error)
@@ -84,37 +93,6 @@ export default function HomePage() {
       window.location.href = `${import.meta.env.VITE_SERVER_URL}/oauth2/authorization/google`
     }
   }
-
-  // 로그인 성공 후 사용자 정보를 가져오는 함수
-  const fetchUserInfo = async () => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SERVER_URL}/api/user/me`, {
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-        setIsLoggedIn(true);
-      }
-    } catch (error) {
-      console.error('Failed to fetch user info:', error);
-    }
-  };
-
-  // useEffect에서는 URL 파라미터를 체크하여 로그인 성공 여부 확인
-  useEffect(() => {
-    // URL에서 로그인 성공 파라미터 확인
-    const urlParams = new URLSearchParams(window.location.search);
-    const loginSuccess = urlParams.get('login_success');
-
-    if (loginSuccess === 'true') {
-      // 로그인 성공 시 사용자 정보 가져오기
-      fetchUserInfo();
-      // URL 파라미터 제거
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, []);
 
    useEffect(() => {
     fetchMusicals()
