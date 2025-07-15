@@ -8,13 +8,11 @@ on:
       - ci/*
   workflow_dispatch:
 
-<<<<<<< HEAD
+
 permissions:
   id-token: write
   contents: read
 
-=======
->>>>>>> parent of 3b8fafd (fix: permissions 추가)
 jobs:
   ci:
     runs-on: ubuntu-latest
