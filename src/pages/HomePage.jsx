@@ -19,7 +19,7 @@ export default function HomePage() {
   const [user, setUser] = useState(null)
   const [allMusicals, setAllMusicals] = useState([])
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [activeSort, setActiveSort] = useState("newest")
+  const [activeSort, setActiveSort] = useState("")
   const [musicals, setMusicals] = useState([])
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [selectedMusicalId, setSelectedMusicalId] = useState(null)
